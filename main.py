@@ -19,6 +19,8 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
+from aiogram import BaseMiddleware
+from aiogram.types import BotCommand
 from config import BOT_TOKEN, ADMINS, ADMIN_PASSWORD, WEBAPP_URL
 from database import Database
 
@@ -26,6 +28,24 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
+
+class FastCallbackMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        if isinstance(event, CallbackQuery):
+            data_str = event.data or ""
+            skip_pre_answer = any(data_str.startswith(prefix) for prefix in [
+                "spin_wheel_action", "acc_", "rej_", "papp_approve_", "papp_reject_", 
+                "delcomp_", "frzcomp_", "deladmin_", "delpromo_", "delcour_"
+            ])
+            if not skip_pre_answer:
+                try:
+                    await event.answer()
+                except Exception:
+                    pass
+        return await handler(event, data)
+
+dp.callback_query.outer_middleware(FastCallbackMiddleware())
+
 db = Database()
 BOT_USERNAME = "asakafood_bot"
 
@@ -40,7 +60,7 @@ LANGS = {
         "room_num": "Xona raqamini kiriting:", "table_num": "Stol raqamini kiriting:",
         "remote_order": "Buyurtma berish!\nPastdagi <b>🍔 Menyu</b> tugmasini bosib mahsulot tanlang:",
         "my_orders": "📦 Buyurtmalarim",
-        "start_msg": "🔥 <b>Food Markaziga xush kelibsiz!</b>\n\n👇 <b>Kerakli bo'limni tanlang:</b>",
+        "start_msg": "🍔 <b>Asaka Food Express</b>ga xush kelibsiz!\n<i>Asaka bo'ylab sevimli taomlar va tezkor yetkazib berish!</i> 🛵\n\n✨ <b>Siz uchun qulayliklar:</b>\n• 🍕 Saralangan kafelardan issiq taomlar\n• 💸 Har bir xariddan <b>3% keshbek</b> balansingizga\n• 🎁 Har kuni <b>bepul bonuslar va sovg'alar</b>\n\n👇 <b>Kerakli bo'limni tanlang:</b>",
         "comment_prompt": "Qo'shimcha izoh qoldiring (Yoki 'Yo'q' deb yozing):", "no": "Yo'q",
         "address_prompt": "Yetkazib berish uchun manzilingizni yozing (yoki lokatsiya yuboring):",
         "comment_prompt_short": "Qo'shimcha izoh qoldiring (Yoki 'Yo'q' deb yozing):",
@@ -79,7 +99,7 @@ LANGS = {
         "room_num": "Введите номер комнаты:", "table_num": "Введите номер стола:",
         "remote_order": "Сделать заказ!\nВыберите продукты через кнопку <b>🍔 Меню</b>:",
         "my_orders": "📦 Мои заказы",
-        "start_msg": "🔥 <b>Добро пожаловать в Food Центр!</b>\n\n👇 <b>Выберите нужный раздел:</b>",
+        "start_msg": "🍔 Добро пожаловать в <b>Asaka Food Express</b>!\n<i>Быстрая доставка вкусной еды по всему городу Асака!</i> 🛵\n\n✨ <b>Преимущества:</b>\n• 🍕 Горячая еда из лучших заведений города\n• 💸 <b>3% кэшбэк</b> с каждого заказа на баланс\n• 🎁 Ежедневные <b>бесплатные бонусы и призы</b>\n\n👇 <b>Выберите нужный раздел:</b>",
         "comment_prompt": "Оставьте комментарий (Или напишите 'Нет'):", "no": "Нет",
         "address_prompt": "Напишите адрес доставки (или отправьте локацию):",
         "comment_prompt_short": "Оставьте комментарий (Или напишите 'Нет'):",
@@ -117,7 +137,7 @@ LANGS = {
         "room_num": "Enter room number:", "table_num": "Enter table number:",
         "remote_order": "Remote delivery!\nChoose items via the <b>🍔 Menu</b> button:",
         "my_orders": "📦 My Orders",
-        "start_msg": "🔥 <b>Welcome to Food Center!</b>\n\n👇 <b>Please select an option:</b>",
+        "start_msg": "🍔 Welcome to <b>Asaka Food Express</b>!\n<i>Fast and delicious food delivery across Asaka city!</i> 🛵\n\n✨ <b>Features:</b>\n• 🍕 Hot meals delivered straight to your door\n• 💸 <b>3% cashback</b> on every single order\n• 🎁 Daily <b>free bonuses & prizes</b> in Profile\n\n👇 <b>Please choose an option:</b>",
         "comment_prompt": "Leave a comment (Or write 'No'):", "no": "No",
         "address_prompt": "Write your delivery address (or send location):",
         "comment_prompt_short": "Leave a comment (Or write 'No'):",
@@ -473,71 +493,84 @@ async def nav_main_callback(call: CallbackQuery, state: FSMContext):
     except Exception:
         pass
 
+async def get_order_menu_view(lang, user_id):
+    companies = await db.get_companies()
+    active_companies = [c for c in companies if not c.get('is_frozen')]
+    
+    keyboard = []
+    main_url = f"{WEBAPP_URL}?lang={lang}&user_id={user_id}"
+    if main_url.startswith("http://"):
+        main_url = main_url.replace("http://", "https://")
+    
+    keyboard.append([
+        InlineKeyboardButton(text="🍔 Umumiy Menyu (Mini App)", web_app=WebAppInfo(url=main_url))
+    ])
+    
+    for c in active_companies:
+        url = f"{WEBAPP_URL}?lang={lang}&user_id={user_id}&company_id={c['id']}"
+        if url.startswith("http://"):
+            url = url.replace("http://", "https://")
+        cat_badge = f" • {c.get('category')}" if c.get('category') else ""
+        keyboard.append([
+            InlineKeyboardButton(text=f"🏪 {c['name']}{cat_badge} (Menyu)", web_app=WebAppInfo(url=url))
+        ])
+        
+    keyboard.append([
+        InlineKeyboardButton(text="🔍 Taom qidirish", callback_data="nav_search_food"),
+        InlineKeyboardButton(text="📍 Yaqin oshxonalar", callback_data="nav_nearby_cafes")
+    ])
+    keyboard.append([InlineKeyboardButton(text="🏪 Hamkor bo'lish (Do'kon qo'shish)", callback_data="nav_partner_apply")])
+    keyboard.append([InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")])
+    
+    if lang == "ru":
+        text = (
+            "🛵 <b>ASAKA FOOD — Заказ еды и товаров</b>\n\n"
+            "📍 <i>Быстрая доставка вкусных блюд по городу Асака!</i>\n\n"
+            "✨ <b>Возможности:</b>\n"
+            "• 🍔 Откройте <b>Mini App</b> и соберите заказ;\n"
+            "• ⚡️ Курьеры доставят горячие блюда за 30-45 минут;\n"
+            "• 💸 <b>3% кэшбэк</b> с каждого заказа возвращается на баланс.\n\n"
+            "👇 <i>Откройте меню или выберите нужное заведение:</i>"
+        )
+    elif lang == "en":
+        text = (
+            "🛵 <b>ASAKA FOOD — Food & Grocery Delivery</b>\n\n"
+            "📍 <i>Fast delivery from best cafes and restaurants in Asaka!</i>\n\n"
+            "✨ <b>Features:</b>\n"
+            "• 🍔 Open <b>Mini App</b> to explore menu and checkout;\n"
+            "• ⚡️ Fresh and hot delivery in 30-45 minutes;\n"
+            "• 💸 <b>3% cashback</b> on every single purchase.\n\n"
+            "👇 <i>Open menu or choose a restaurant:</i>"
+        )
+    else:
+        text = (
+            "🛵 <b>ASAKA FOOD — Taom va Mahsulotlar buyurtmasi</b>\n\n"
+            "📍 <i>Asaka shahri bo'ylab eng sara oshxona va kafelardan yetkazish!</i>\n\n"
+            "✨ <b>Qulay imkoniyatlar:</b>\n"
+            "• 🍔 <b>Mini App</b> menyusini ochib, taomlarni tanlang;\n"
+            "• ⚡️ Kuryerlarimiz taomlarni issiq holida tez yetkazadi;\n"
+            "• 💸 Har bir xaridingizdan <b>3% keshbek</b> balansingizga qaytadi.\n\n"
+            "👇 <i>Menyuni oching yoki o'zingizga qulay bo'limni tanlang:</i>"
+        )
+    return text, InlineKeyboardMarkup(inline_keyboard=keyboard)
+
 @dp.callback_query(F.data == "nav_order")
 async def nav_order_callback(call: CallbackQuery, state: FSMContext):
     await state.clear()
     user = await db.get_user(call.from_user.id)
     lang = user.get("lang", "uz") if user else "uz"
-    companies = await db.get_companies()
-    active_companies = [c for c in companies if not c.get('is_frozen')]
-    
-    if not active_companies:
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")]
-        ])
-        await call.message.edit_text("Hozircha faol kafe/restoranlar mavjud emas.", reply_markup=kb)
-        await call.answer()
-        return
-
-    keyboard = []
-    for c in active_companies:
-        url = f"{WEBAPP_URL}?lang={lang}&user_id={call.from_user.id}&company_id={c['id']}"
-        if url.startswith("http://"):
-            url = url.replace("http://", "https://")
-        cat_badge = f" • {c.get('category')}" if c.get('category') else ""
-        keyboard.append([
-            InlineKeyboardButton(text=f"🏪 {c['name']}{cat_badge} (🍔 Menyu)", web_app=WebAppInfo(url=url))
-        ])
-    keyboard.append([InlineKeyboardButton(text="➕ O'z do'koningizni qo'shing", callback_data="nav_partner_apply")])
-    keyboard.append([InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")])
-    
-    text = (
-        f"🏪 <b>{get_text(lang, 'choose_company')}</b>\n\n"
-        f"<i>Kafeni tanlashingiz bilan taomnoma (Mini App) darhol ochiladi 👇</i>"
-    )
-    await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
-    await call.answer()
+    text, kb = await get_order_menu_view(lang, call.from_user.id)
+    try:
+        await call.message.edit_text(text, reply_markup=kb)
+    except Exception:
+        pass
 
 @dp.message(StateFilter(None), F.text.in_([LANGS["uz"]["masofaviy"], LANGS["ru"]["masofaviy"], LANGS["en"]["masofaviy"]]))
 async def choose_masofaviy_message(message: Message, state: FSMContext):
     user = await db.get_user(message.from_user.id)
     lang = user.get("lang", "uz") if user else "uz"
-    companies = await db.get_companies()
-    active_companies = [c for c in companies if not c.get('is_frozen')]
-    
-    clear_reply_kb_bg(message.chat.id)
-
-    if not active_companies:
-        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")]])
-        await message.answer("Hozircha faol kafe/restoranlar mavjud emas.", reply_markup=kb)
-        return
-
-    keyboard = []
-    for c in active_companies:
-        url = f"{WEBAPP_URL}?lang={lang}&user_id={message.from_user.id}&company_id={c['id']}"
-        if url.startswith("http://"):
-            url = url.replace("http://", "https://")
-        cat_badge = f" • {c.get('category')}" if c.get('category') else ""
-        keyboard.append([
-            InlineKeyboardButton(text=f"🏪 {c['name']}{cat_badge} (🍔 Menyu)", web_app=WebAppInfo(url=url))
-        ])
-    keyboard.append([InlineKeyboardButton(text="➕ O'z do'koningizni qo'shing", callback_data="nav_partner_apply")])
-    keyboard.append([InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")])
-    text = (
-        f"🏪 <b>{get_text(lang, 'choose_company')}</b>\n\n"
-        f"<i>Kafeni tanlashingiz bilan taomnoma (Mini App) darhol ochiladi 👇</i>"
-    )
-    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+    text, kb = await get_order_menu_view(lang, message.from_user.id)
+    await message.answer(text, reply_markup=kb)
 
 @dp.callback_query(F.data == "nav_cabinet")
 async def nav_cabinet_callback(call: CallbackQuery):
@@ -1521,32 +1554,61 @@ async def nav_my_orders_callback(call: CallbackQuery):
 async def nav_contact_callback(call: CallbackQuery):
     user = await db.get_user(call.from_user.id)
     lang = user.get("lang", "uz") if user else "uz"
-    companies = await db.get_companies()
-    active_companies = [c for c in companies if not c.get('is_frozen')]
+    contact = await db.get_admin_contact()
+    if not contact:
+        contact = {"name": "Asaka Food Admin", "phone": "+998 90 123 45 67", "username": "@sobirjonov_web"}
     
-    if not active_companies or len(active_companies) == 1:
-        company_id = active_companies[0]['id'] if active_companies else None
-        contact = await db.get_admin_contact(company_id=company_id)
-        if not contact:
-            contact = {"name": "Admin", "phone": "Kiritilmagan", "username": "@admin"}
+    admin_tg = contact.get('username', '@sobirjonov_web')
+    clean_tg = admin_tg.replace('@', '') if admin_tg else 'sobirjonov_web'
+    phone = contact.get('phone', '+998 90 123 45 67')
+    name = contact.get('name', 'Asaka Food Admin')
+    
+    if lang == "ru":
         text = (
-            get_text(lang, "contact_admin_title") +
-            f"{get_text(lang, 'contact_name')} {contact.get('name', 'Admin')}\n"
-            f"{get_text(lang, 'contact_phone')} {contact.get('phone', 'Kiritilmagan')}\n"
-            f"{get_text(lang, 'contact_tg')} {contact.get('username', '')}\n\n"
+            "☎️ <b>СЛУЖБА ПОДДЕРЖКИ И СВЯЗЬ С АДМИНИСТРАЦИЕЙ</b>\n\n"
+            "Нужна помощь по заказу или есть вопросы и предложения? Мы всегда на связи!\n\n"
+            f"👨‍💼 <b>Администратор:</b> {name}\n"
+            f"📱 <b>Телефон:</b> {phone}\n"
+            f"💬 <b>Telegram:</b> @{clean_tg}\n"
+            "⏰ <b>Время работы:</b> 09:00 — 23:00 (Ежедневно)\n\n"
+            "<i>👇 Нажмите кнопку ниже, чтобы написать администратору в Telegram:</i>"
         )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")]
-        ])
-        await call.message.edit_text(text, reply_markup=kb)
+        btn_tg = "💬 Написать в Telegram"
+        btn_partner = "🏪 Стать партнером (Добавить заведение)"
+    elif lang == "en":
+        text = (
+            "☎️ <b>CUSTOMER SUPPORT & ADMIN CONTACT</b>\n\n"
+            "Need help with your order or have a proposal? We are here to help!\n\n"
+            f"👨‍💼 <b>Admin:</b> {name}\n"
+            f"📱 <b>Phone:</b> {phone}\n"
+            f"💬 <b>Telegram:</b> @{clean_tg}\n"
+            "⏰ <b>Working Hours:</b> 09:00 — 23:00 (Daily)\n\n"
+            "<i>👇 Tap the button below to message the admin directly on Telegram:</i>"
+        )
+        btn_tg = "💬 Message via Telegram"
+        btn_partner = "🏪 Partner With Us (Add Shop)"
     else:
-        keyboard = []
-        for c in active_companies:
-            keyboard.append([InlineKeyboardButton(text=f"🏪 {c['name']}", callback_data=f"contactcomp_{c['id']}")])
-        keyboard.append([InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")])
-        text = "Qaysi kafening admini bilan bog'lanmoqchisiz?" if lang=="uz" else ("Выберите кафе для связи с админом:" if lang=="ru" else "Choose a cafe to contact admin:")
-        await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
-    await call.answer()
+        text = (
+            "☎️ <b>QO'LLAB-QUVVATLASH VA ALOQA MARKAZI</b>\n\n"
+            "Savol, taklif yoki buyurtma bo'yicha yordam kerakmi? Biz sizga mamnuniyat bilan yordam beramiz!\n\n"
+            f"👨‍💼 <b>Admin:</b> {name}\n"
+            f"📱 <b>Telefon:</b> {phone}\n"
+            f"💬 <b>Telegram:</b> @{clean_tg}\n"
+            "⏰ <b>Ish vaqti:</b> 09:00 — 23:00 (Har kuni)\n\n"
+            "<i>👇 Quyidagi tugma orqali to'g'ridan-to'g'ri Telegram orqali yozishingiz mumkin:</i>"
+        )
+        btn_tg = "💬 Telegram orqali yozish"
+        btn_partner = "🏪 Hamkor bo'lish (Do'kon qo'shish)"
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn_tg, url=f"https://t.me/{clean_tg}")],
+        [InlineKeyboardButton(text=btn_partner, callback_data="nav_partner_apply")],
+        [InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")]
+    ])
+    try:
+        await call.message.edit_text(text, reply_markup=kb)
+    except Exception:
+        pass
 
 @dp.callback_query(F.data == "nav_lang")
 async def nav_lang_callback(call: CallbackQuery):
@@ -3742,8 +3804,25 @@ async def main():
             bot_info = await bot.get_me()
             if bot_info.username:
                 BOT_USERNAME = bot_info.username
-        except Exception:
-            pass
+            await bot.set_my_description(
+                description=(
+                    "🛵 Asaka Food Express — Asaka shahridagi barcha kafe, restoran va do'konlardan tezkor yetkazib berish xizmati!\n\n"
+                    "🍔 Mazali va issiq taomlar\n"
+                    "⚡️ 30-45 daqiqada tezkor yetkazish\n"
+                    "💸 Har bir xaridingizdan 3% keshbek\n"
+                    "🎁 Har kuni bepul bonuslar va sovg'alar!"
+                )
+            )
+            await bot.set_my_short_description(
+                short_description="Asaka bo'yicha tezkor taom va mahsulotlar yetkazib berish xizmati 🛵"
+            )
+            await bot.set_my_commands([
+                BotCommand(command="start", description="Bosh menyu / Главное меню"),
+                BotCommand(command="menu", description="Taomnoma / Меню"),
+                BotCommand(command="help", description="Qo'llanma / Инструкция"),
+            ])
+        except Exception as e:
+            logging.warning(f"Bot meta sozlashda xatolik: {e}")
         await bot.delete_webhook(drop_pending_updates=True)
         runner, port = await start_webapp()
         if not os.environ.get("PORT"):
