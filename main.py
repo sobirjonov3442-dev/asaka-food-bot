@@ -67,7 +67,7 @@ LANGS = {
         "choose_company": "🏪 O'zingiz xohlagan kafeni tanlang:",
         "daily_bonus": "🎁 Kunlik bonus", "referral": "🔗 Do'stlarni taklif qilish",
         "wheel": "🎡 Omadli Baraban", "promocode": "🎟 Promokod", "top_referrals": "🏆 Liderlar",
-        "guide": "📖 Qo'llanma"
+        "guide": "📖 Qo'llanma", "order_btn": "🛵 Buyurtma"
     },
     "ru": {
         "start": "Здравствуйте", "menu": "🍔 Меню", "back": "🔙 Главное меню",
@@ -105,7 +105,7 @@ LANGS = {
         "choose_company": "🏪 Выберите желаемое кафе:",
         "daily_bonus": "🎁 Ежедневный бонус", "referral": "🔗 Пригласить друзей",
         "wheel": "🎡 Колесо фортуны", "promocode": "🎟 Промокод", "top_referrals": "🏆 Лидеры",
-        "guide": "📖 Инструкция"
+        "guide": "📖 Инструкция", "order_btn": "🛵 Заказ"
     },
     "en": {
         "start": "Hello", "menu": "🍔 Menu", "back": "🔙 Main menu",
@@ -143,7 +143,7 @@ LANGS = {
         "choose_company": "🏪 Choose your desired cafe:",
         "daily_bonus": "🎁 Daily Bonus", "referral": "🔗 Invite Friends",
         "wheel": "🎡 Lucky Wheel", "promocode": "🎟 Promo code", "top_referrals": "🏆 Leaders",
-        "guide": "📖 Guide"
+        "guide": "📖 Guide", "order_btn": "🛵 Order"
     }
 }
 
@@ -254,9 +254,11 @@ def clear_reply_kb_bg(chat_id: int):
 # --- Keyboards ---
 def get_start_keyboard(lang='uz', user_id=0, is_admin_user=False):
     keyboard = [
-        [InlineKeyboardButton(text=get_text(lang, "masofaviy"), callback_data="nav_order")],
-        [InlineKeyboardButton(text=get_text(lang, "kabinet"), callback_data="nav_cabinet")],
-        [InlineKeyboardButton(text=get_text(lang, "guide"), callback_data="nav_guide")]
+        [
+            InlineKeyboardButton(text=get_text(lang, "order_btn"), callback_data="nav_order"),
+            InlineKeyboardButton(text=get_text(lang, "kabinet"), callback_data="nav_cabinet"),
+            InlineKeyboardButton(text=get_text(lang, "guide"), callback_data="nav_guide")
+        ]
     ]
     if is_admin_user:
         keyboard.append([InlineKeyboardButton(text="👑 Admin panel", callback_data="nav_admin")])
@@ -580,27 +582,74 @@ async def nav_guide_callback(call: CallbackQuery):
     user = await db.get_user(call.from_user.id)
     lang = user.get("lang", "uz") if user else "uz"
     
-    guide_text = (
-        "📖 <b>Asaka Food & Market — Botdan foydalanish qo'llanmasi</b>\n\n"
-        "1️⃣ <b>Buyurtma berish:</b>\n"
-        "• Bosh menyudagi <b>🛵 Buyurtma qilish</b> tugmasini bosing;\n"
-        "• O'zingiz xohlagan kafe yoki do'konni tanlang;\n"
-        "• <b>🍔 Menyu (Mini App)</b> ochiladi, taomlarni savatga qo'shing va rasmiylashtiring.\n\n"
-        "2️⃣ <b>👤 Kabinetim bo'limi:</b>\n"
-        "• <b>Keshbek & Balans:</b> Har bir xaridingizdan 3% keshbek tushadi;\n"
-        "• <b>🎡 Omadli Baraban:</b> Kuniga 2 marta bepul aylantirib pul yutib oling;\n"
-        "• <b>🎁 Kunlik bonus:</b> Har 24 soatda bepul pul oling;\n"
-        "• <b>🔗 Do'stlarni taklif qilish:</b> Har bir taklif qilingan do'st uchun +400 so'm;\n"
-        "• <b>🎟 Promokodlar:</b> Maxsus chegirma kodlarini faollashtiring;\n"
-        "• <b>⚡ Tezkor buyurtma:</b> Oxirgi buyurtmangizni 1 ta bosishda takrorlang;\n"
-        "• <b>📍 Yaqin oshxonalar & Taom qidirish:</b> O'zingizga yaqin oshxonalarni toping.\n\n"
-        "3️⃣ <b>🏪 Do'kon va Kafe egalari uchun:</b>\n"
-        "• <i>Kabinetim</i> ichidagi <b>'Hamkor bo'lish'</b> tugmasi orqali o'z do'koningizni platformaga ulab, 0% komissiya bilan savdo qiling!\n\n"
-        "☎️ <b>Admin bilan aloqa:</b> @sobirjonov_web"
-    )
+    if lang == "ru":
+        guide_text = (
+            "📖 <b>Asaka Food — Краткая инструкция по боту</b>\n\n"
+            "🛵 <b>Как сделать заказ:</b>\n"
+            "• Нажмите кнопку <b>🛵 Заказ</b> и выберите заведение или магазин;\n"
+            "• В удобном Mini App соберите корзину и оформите доставку.\n\n"
+            "💸 <b>3% Кэшбэк с каждого заказа:</b>\n"
+            "• С каждого выполненного заказа <b>3% суммы</b> возвращается на ваш баланс;\n"
+            "• Накопленный кэшбэк можно использовать для оплаты следующих заказов!\n\n"
+            "🎁 <b>Ежедневный бонус:</b>\n"
+            "• В разделе <b>👤 Кабинет</b> получайте бесплатный денежный бонус каждые 24 часа.\n\n"
+            "🎡 <b>Колесо Фортуны:</b>\n"
+            "• Крутите колесо бесплатно 2 раза в день и выигрывайте до 10 000 сум!\n\n"
+            "🔗 <b>Приглашение друзей (Рефералы):</b>\n"
+            "• Отправьте свою ссылку другу — получите <b>+400 сум</b> на баланс за каждого!\n\n"
+            "🎟 <b>Промокоды:</b>\n"
+            "• Активируйте промокоды в кабинете и получайте мгновенные скидки.\n\n"
+            "🏪 <b>Для владельцев заведений:</b>\n"
+            "• Подключайте своё кафе или магазин к боту с <b>0% комиссией</b>!\n\n"
+            "☎️ <b>Поддержка:</b> @sobirjonov_web"
+        )
+    elif lang == "en":
+        guide_text = (
+            "📖 <b>Asaka Food — Quick User Guide</b>\n\n"
+            "🛵 <b>How to Order:</b>\n"
+            "• Tap <b>🛵 Order</b> and pick your favorite cafe or store;\n"
+            "• Select items in the Mini App and complete delivery checkout.\n\n"
+            "💸 <b>3% Cashback on every order:</b>\n"
+            "• <b>3% of each order</b> is credited back to your balance automatically;\n"
+            "• Use your accumulated balance to pay for future orders!\n\n"
+            "🎁 <b>Daily Bonus:</b>\n"
+            "• Claim free bonus money every 24 hours in <b>👤 My Profile</b>.\n\n"
+            "🎡 <b>Lucky Wheel:</b>\n"
+            "• Spin 2 times every day for free to win up to 10,000 UZS!\n\n"
+            "🔗 <b>Invite Friends (Referral):</b>\n"
+            "• Share your personal link and get <b>+400 UZS</b> for each friend invited!\n\n"
+            "🎟 <b>Promo Codes:</b>\n"
+            "• Enter active promo codes in Profile to get instant discounts.\n\n"
+            "🏪 <b>Partner With Us:</b>\n"
+            "• Add your store/restaurant with 0% commission and boost your sales!\n\n"
+            "☎️ <b>Support:</b> @sobirjonov_web"
+        )
+    else:
+        guide_text = (
+            "📖 <b>Asaka Food — Botdan foydalanish qo'llanmasi</b>\n\n"
+            "🛵 <b>Buyurtma berish:</b>\n"
+            "• <b>🛵 Buyurtma</b> tugmasini bosing va o'zingizga yoqqan oshxona yoki do'konni tanlang;\n"
+            "• <b>Mini App</b> menyusidan taomlarni savatga qo'shing va manzilni kiritib buyurtma bering.\n\n"
+            "💸 <b>3% Keshbek tizimi:</b>\n"
+            "• Har bitta buyurtmangizdan <b>3% summa</b> to'g'ridan-to'g'ri balansingizga qaytadi;\n"
+            "• Yig'ilgan keshbek mablag'larini keyingi buyurtmalarni to'lashda to'liq ishlatishingiz mumkin!\n\n"
+            "🎁 <b>Kunlik bonus:</b>\n"
+            "• <b>👤 Kabinetim</b> bo'limida har 24 soatda 1 marta bepul pul bonusini yig'ib oling.\n\n"
+            "🎡 <b>Omadli Baraban:</b>\n"
+            "• Har kuni <b>2 marta bepul</b> barabanni aylantiring va 10 000 so'mgacha pul yutug'ini oling!\n\n"
+            "🔗 <b>Do'stlarni taklif qilish (Referal):</b>\n"
+            "• Shaxsiy havolangiz orqali do'stlaringizni taklif qiling — har bir do'st uchun <b>+400 so'm</b> oling!\n\n"
+            "🎟 <b>Promokodlar:</b>\n"
+            "• Aksiya va bayram kodlarini kiritib, chegirmalardan foydalaning.\n\n"
+            "🏪 <b>Do'kon va Kafe egalari uchun:</b>\n"
+            "• O'z biznesingizni botga <b>0% komissiya</b> bilan ulab, daromadingizni oshiring!\n\n"
+            "☎️ <b>Admin / Qo'llab-quvvatlash:</b> @sobirjonov_web"
+        )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(lang, "masofaviy"), callback_data="nav_order")],
-        [InlineKeyboardButton(text=get_text(lang, "kabinet"), callback_data="nav_cabinet")],
+        [
+            InlineKeyboardButton(text=get_text(lang, "order_btn"), callback_data="nav_order"),
+            InlineKeyboardButton(text=get_text(lang, "kabinet"), callback_data="nav_cabinet")
+        ],
         [InlineKeyboardButton(text=get_text(lang, "back"), callback_data="nav_main")]
     ])
     await call.message.edit_text(guide_text, reply_markup=kb)
