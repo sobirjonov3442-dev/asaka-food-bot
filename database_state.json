@@ -1,0 +1,77 @@
+{
+  "users": {
+    "8135353129": {
+      "id": 1,
+      "telegram_id": 8135353129,
+      "fullname": ".",
+      "username": "sobirjonov_web",
+      "phone": null,
+      "lang": "uz",
+      "registered_at": "2026-07-11 06:42"
+    },
+    "7032024055": {
+      "id": 2,
+      "telegram_id": 7032024055,
+      "fullname": "Coderixa",
+      "username": null,
+      "phone": null,
+      "lang": "uz",
+      "registered_at": "2026-07-11 06:45",
+      "last_bonus_date": "2026-10-27T18:19:26.661715",
+      "balance": 3399,
+      "wheel_spins_today": 1,
+      "wheel_last_date": "2026-10-28"
+    },
+    "7752032178": {
+      "id": 3,
+      "telegram_id": 7752032178,
+      "fullname": "개발자👨🏻‍💻",
+      "username": "sardor_devv",
+      "phone": null,
+      "lang": "uz",
+      "registered_at": "2026-10-27 17:23"
+    }
+  },
+  "products": [],
+  "orders": [],
+  "carts": {},
+  "admins": [
+    8135353129,
+    7752032178
+  ],
+  "couriers": [],
+  "admin_contact": {
+    "name": "Fast Food Admin",
+    "phone": "+998 90 123 45 67",
+    "username": "@admin"
+  },
+  "categories": [],
+  "admin_accounts": [
+    {
+      "login": "opetito321",
+      "password": "opetittox555",
+      "name": "Asosiy Admin",
+      "is_superadmin": true
+    }
+  ],
+  "admin_sessions": {
+    "8135353129": "opetito321",
+    "7752032178": "2"
+  },
+  "companies": [],
+  "partner_requests": [],
+  "promocodes": {
+    "ASAKA": {
+      "code": "ASAKA",
+      "amount": 3000,
+      "max_uses": 500,
+      "used_by": [],
+      "created_at": "2026-10-27 19:11"
+    }
+  },
+  "admin_location": {
+    "address": "Asaka shahar",
+    "latitude": 40.6415,
+    "longitude": 72.2392
+  }
+}

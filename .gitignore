@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.zip
+
+# Object file
+*.o
+
+# Ada Library Information
+*.ali
