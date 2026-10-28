@@ -255,9 +255,12 @@ def clear_reply_kb_bg(chat_id: int):
 def get_start_keyboard(lang='uz', user_id=0, is_admin_user=False):
     keyboard = [
         [
-            InlineKeyboardButton(text=get_text(lang, "order_btn"), callback_data="nav_order"),
-            InlineKeyboardButton(text=get_text(lang, "kabinet"), callback_data="nav_cabinet"),
-            InlineKeyboardButton(text=get_text(lang, "guide"), callback_data="nav_guide")
+            InlineKeyboardButton(text=get_text(lang, "masofaviy"), callback_data="nav_order"),
+            InlineKeyboardButton(text=get_text(lang, "kabinet"), callback_data="nav_cabinet")
+        ],
+        [
+            InlineKeyboardButton(text=get_text(lang, "guide"), callback_data="nav_guide"),
+            InlineKeyboardButton(text=get_text(lang, "aloqa"), callback_data="nav_contact")
         ]
     ]
     if is_admin_user:
@@ -456,13 +459,19 @@ async def back_to_main(message: Message, state: FSMContext):
 
 @dp.callback_query(F.data == "nav_main")
 async def nav_main_callback(call: CallbackQuery, state: FSMContext):
+    try:
+        await call.answer()
+    except Exception:
+        pass
     await state.clear()
     user = await db.get_user(call.from_user.id)
     lang = user.get("lang", "uz") if user else "uz"
     is_adm = await is_admin(call.from_user.id)
     text = get_text(lang, "start") + f", <b>{call.from_user.full_name}</b>!\n\n" + get_text(lang, "start_msg")
-    await call.message.edit_text(text, reply_markup=get_start_keyboard(lang, call.from_user.id, is_admin_user=is_adm))
-    await call.answer()
+    try:
+        await call.message.edit_text(text, reply_markup=get_start_keyboard(lang, call.from_user.id, is_admin_user=is_adm))
+    except Exception:
+        pass
 
 @dp.callback_query(F.data == "nav_order")
 async def nav_order_callback(call: CallbackQuery, state: FSMContext):
